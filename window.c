@@ -17,7 +17,8 @@ G_DEFINE_TYPE(TuasWindow, tuas_window, GTK_TYPE_APPLICATION_WINDOW)
 
 enum {
   PROP_0,
-  PROP_STRING,
+  PROP_DESC,
+  PROP_F0,
   N_PROPERTIES
 };
 static GParamSpec *jig_data_properties[N_PROPERTIES] = {NULL};
@@ -28,18 +29,22 @@ typedef struct _JigData {
   GObject parent;
   GtkListItem* item;
   char* desc;
+  int f0; // 0th or "user requirements" flag
 } JigData;
 G_DEFINE_TYPE(JigData, jig_data, G_TYPE_OBJECT)
 
 static void jig_data_init(JigData* self) {
   self->item = NULL;
   self->desc = NULL;
+  self->f0 = 0;
 }
 
 static void jig_data_set_property(GObject* object, guint property_id, const GValue* value, GParamSpec* pspec) {
   JigData* self = JIG_DATA(object);
-  if (property_id == PROP_STRING) {
+  if (property_id == PROP_DESC) {
     self->desc = g_strdup(g_value_get_string(value));
+  } else if (property_id == PROP_F0) {
+    self->f0 = g_value_get_int(value);
   } else {
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
   }
@@ -47,8 +52,10 @@ static void jig_data_set_property(GObject* object, guint property_id, const GVal
 
 static void jig_data_get_property(GObject* object, guint property_id, GValue* value, GParamSpec* pspec) {
   JigData* self = JIG_DATA(object);
-  if (property_id == PROP_STRING) {
+  if (property_id == PROP_DESC) {
     g_value_set_string(value, g_strdup(self->desc));
+  } else if (property_id == PROP_F0) {
+    g_value_set_int(value, self->f0);
   } else {
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
   }
@@ -67,15 +74,17 @@ static void jig_data_class_init(JigDataClass* class) {
   gobject_class->finalize = jig_data_finalize;
   gobject_class->set_property = jig_data_set_property;
   gobject_class->get_property = jig_data_get_property;
-  jig_data_properties[PROP_STRING] = g_param_spec_string("string", "string", "string", "", G_PARAM_READWRITE);
+  jig_data_properties[PROP_DESC] = g_param_spec_string("string", "string", "string", "", G_PARAM_READWRITE);
+  jig_data_properties[PROP_F0] = g_param_spec_string("int", "int", "int", "", G_PARAM_READWRITE);
   g_object_class_install_properties(gobject_class, N_PROPERTIES, jig_data_properties);
 }
 
-JigData* jig_data_new_with_data(GtkListItem* item, const char* desc) {
+JigData* jig_data_new_with_data(GtkListItem* item, const char* desc, int f0) {
   g_return_val_if_fail(GTK_IS_LIST_ITEM(item) || item == NULL, NULL);
   JigData *data = JIG_DATA(g_object_new(JIG_TYPE_DATA, NULL));
   data->item = item ? g_object_ref(item) : NULL;
   data->desc = g_strdup(desc);
+  data->f0 = f0;
   return data;
 }
 
@@ -83,20 +92,21 @@ JigData* jig_data_new_with_data(GtkListItem* item, const char* desc) {
 
 // Row addition callback
 static void new_row_cb(GtkButton* btn, TuasWindow* win) {
-  JigData* data = jig_data_new_with_data(NULL, "");
+  JigData* data = jig_data_new_with_data(NULL, "", 0);
   g_list_store_append(win->liststore, data);
   g_object_unref(data);
 }
 
+// Description callbacks (3)
 void setup_desc_cb(GtkListItemFactory* self, GtkListItem* item) {
   GtkWidget* text = gtk_entry_new();
-  gtk_list_item_set_child(item, GTK_WIDGET(text));
+  gtk_list_item_set_child(item, text);
 }
 
 void bind_desc_cb(GtkListItemFactory* self, GtkListItem* item) {
-  GtkWidget* text = gtk_list_item_get_child(item);
-  GtkEntryBuffer* buffer = gtk_entry_get_buffer(GTK_ENTRY(text));
-  gtk_entry_set_placeholder_text(GTK_ENTRY(text), "Jig description");
+  GtkEntry* entry = GTK_ENTRY(gtk_list_item_get_child(item));
+  GtkEntryBuffer* buffer = gtk_entry_get_buffer(entry);
+  gtk_entry_set_placeholder_text(entry, "Jig description");
   JigData* data = JIG_DATA(gtk_list_item_get_item(item));
   GBinding* bind = g_object_bind_property(buffer, "text", data, "string", G_BINDING_DEFAULT);
   g_object_set_data(G_OBJECT(item), "bind", bind);
