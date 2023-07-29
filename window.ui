@@ -12,6 +12,12 @@
             <signal name="clicked" handler="new_row_cb" swapped="false" object="TuasWindow"/>
           </object>
         </child>
+        <child>
+          <object class="GtkButton">
+            <property name="icon-name">dialog-information-symbolic</property>
+            <signal name="clicked" handler="write_cb" swapped="false" object="TuasWindow"/>
+          </object>
+        </child>
       </object>
     </child>
     <child>
@@ -46,8 +52,9 @@
               <object class="GtkColumnViewColumn">
                 <property name="title">User reqs</property>
                 <property name="factory">
-                  <object class="GtkBuilderListItemFactory">
-                    <property name="resource">/org/smrt/Tuas/parambutton.ui</property>
+                  <object class="GtkSignalListItemFactory">
+                    <signal name="setup" handler="setup_status0_cb"/>
+                    <signal name="bind" handler="bind_status0_cb"/>
                   </object>
                 </property>
               </object>

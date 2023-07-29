@@ -18,7 +18,7 @@ G_DEFINE_TYPE(TuasWindow, tuas_window, GTK_TYPE_APPLICATION_WINDOW)
 enum {
   PROP_0,
   PROP_DESC,
-  PROP_F0,
+  PROP_STATUS0,
   N_PROPERTIES
 };
 static GParamSpec *jig_data_properties[N_PROPERTIES] = {NULL};
@@ -29,22 +29,22 @@ typedef struct _JigData {
   GObject parent;
   GtkListItem* item;
   char* desc;
-  int f0; // 0th or "user requirements" flag
+  char* status0; // 0th or "user requirements" status
 } JigData;
 G_DEFINE_TYPE(JigData, jig_data, G_TYPE_OBJECT)
 
 static void jig_data_init(JigData* self) {
   self->item = NULL;
   self->desc = NULL;
-  self->f0 = 0;
+  self->status0 = NULL;
 }
 
 static void jig_data_set_property(GObject* object, guint property_id, const GValue* value, GParamSpec* pspec) {
   JigData* self = JIG_DATA(object);
   if (property_id == PROP_DESC) {
     self->desc = g_strdup(g_value_get_string(value));
-  } else if (property_id == PROP_F0) {
-    self->f0 = g_value_get_int(value);
+  } else if (property_id == PROP_STATUS0) {
+    self->status0 = g_strdup(g_value_get_string(value));
   } else {
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
   }
@@ -54,8 +54,8 @@ static void jig_data_get_property(GObject* object, guint property_id, GValue* va
   JigData* self = JIG_DATA(object);
   if (property_id == PROP_DESC) {
     g_value_set_string(value, g_strdup(self->desc));
-  } else if (property_id == PROP_F0) {
-    g_value_set_int(value, self->f0);
+  } else if (property_id == PROP_STATUS0) {
+    g_value_set_string(value, g_strdup(self->status0));
   } else {
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
   }
@@ -74,17 +74,17 @@ static void jig_data_class_init(JigDataClass* class) {
   gobject_class->finalize = jig_data_finalize;
   gobject_class->set_property = jig_data_set_property;
   gobject_class->get_property = jig_data_get_property;
-  jig_data_properties[PROP_DESC] = g_param_spec_string("string", "string", "string", "", G_PARAM_READWRITE);
-  jig_data_properties[PROP_F0] = g_param_spec_string("int", "int", "int", "", G_PARAM_READWRITE);
+  jig_data_properties[PROP_DESC] = g_param_spec_string("desc", "string", "string", "", G_PARAM_READWRITE);
+  jig_data_properties[PROP_STATUS0] = g_param_spec_string("status0", "string", "string", "", G_PARAM_READWRITE);
   g_object_class_install_properties(gobject_class, N_PROPERTIES, jig_data_properties);
 }
 
-JigData* jig_data_new_with_data(GtkListItem* item, const char* desc, int f0) {
+JigData* jig_data_new_with_data(GtkListItem* item, char* desc, char* status0) {
   g_return_val_if_fail(GTK_IS_LIST_ITEM(item) || item == NULL, NULL);
   JigData *data = JIG_DATA(g_object_new(JIG_TYPE_DATA, NULL));
   data->item = item ? g_object_ref(item) : NULL;
   data->desc = g_strdup(desc);
-  data->f0 = f0;
+  data->status0 = status0;
   return data;
 }
 
@@ -92,9 +92,20 @@ JigData* jig_data_new_with_data(GtkListItem* item, const char* desc, int f0) {
 
 // Row addition callback
 static void new_row_cb(GtkButton* btn, TuasWindow* win) {
-  JigData* data = jig_data_new_with_data(NULL, "", 0);
+  JigData* data = jig_data_new_with_data(NULL, "", "Open");
   g_list_store_append(win->liststore, data);
   g_object_unref(data);
+}
+
+// Write callback
+
+static void write_cb(GtkButton* btn, TuasWindow* win) {
+  GListModel* lm = G_LIST_MODEL(win->liststore);
+  JigData* item;
+  g_print("%u items\n", g_list_model_get_n_items(lm));
+  for (int i = 0; (item = JIG_DATA(g_list_model_get_item(lm, i))) != NULL; ++i) {
+    g_print("\"%s\" => %s\n", item->desc, item->status0);
+  }
 }
 
 // Description callbacks (3)
@@ -108,14 +119,53 @@ void bind_desc_cb(GtkListItemFactory* self, GtkListItem* item) {
   GtkEntryBuffer* buffer = gtk_entry_get_buffer(entry);
   gtk_entry_set_placeholder_text(entry, "Jig description");
   JigData* data = JIG_DATA(gtk_list_item_get_item(item));
-  GBinding* bind = g_object_bind_property(buffer, "text", data, "string", G_BINDING_DEFAULT);
+  GBinding* bind = g_object_bind_property(buffer, "text", data, "desc", G_BINDING_DEFAULT);
   g_object_set_data(G_OBJECT(item), "bind", bind);
 }
 
 static void unbind_desc_cb(GtkListItemFactory* factory, GtkListItem* listitem) {
   GBinding* bind = G_BINDING(g_object_get_data(G_OBJECT(listitem), "bind"));
   g_binding_unbind(bind);
-  g_object_set_data (G_OBJECT(listitem), "bind", NULL);
+  g_object_set_data(G_OBJECT(listitem), "bind", NULL);
+}
+
+// User requirement flag callbacks (3)
+void setup_status0_cb(GtkListItemFactory* self, GtkListItem* item) {
+  GtkWidget* btn = gtk_button_new();
+  gtk_list_item_set_child(item, btn);
+}
+
+bool state_change_func(GBinding* binding, const GValue* lbl, GValue* rep, gpointer user_data) {
+  char* str = g_value_dup_string(lbl);
+  g_print("%s\n", str);
+  if (g_strcmp0(str, "open") == 0) {
+    g_value_set_uint(rep, 1);
+  } else if (g_strcmp0(str, "close") == 0) {
+    g_value_set_uint(rep, 2);
+  } else {
+    g_value_set_uint(rep, 0);
+  }
+  return true;
+}
+
+void state_change_cb(GtkButton* btn) {
+  const char* label = gtk_button_get_label(btn);
+  if (g_str_equal(label, "Open")) {
+    gtk_button_set_label(btn, "Closed");
+  } else if (g_str_equal(label, "Closed")) {
+    gtk_button_set_label(btn, "N/A");
+  } else if (g_str_equal(label, "N/A")) {
+    gtk_button_set_label(btn, "Open");
+  }
+}
+
+void bind_status0_cb(GtkListItemFactory* self, GtkListItem* item) {
+  GtkButton* btn = GTK_BUTTON(gtk_list_item_get_child(item));
+  gtk_button_set_label(btn, "Open");
+  g_signal_connect(btn, "clicked", G_CALLBACK(state_change_cb), NULL);
+  JigData* data = JIG_DATA(gtk_list_item_get_item(item));
+  GBinding* bind = g_object_bind_property(btn, "label", data, "status0", G_BINDING_DEFAULT);
+  g_object_set_data(G_OBJECT(item), "bind", bind);
 }
 
 // Begin tedious boilerplate
@@ -133,6 +183,10 @@ static void tuas_window_class_init(TuasWindowClass* class) {
   gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), setup_desc_cb);
   gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), bind_desc_cb);
   gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), unbind_desc_cb);
+  gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), setup_status0_cb);
+  gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), bind_status0_cb);
+
+  gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), write_cb);
 }
 
 GtkWidget* tuas_window_new(GtkApplication* app) {
