@@ -29,14 +29,14 @@ typedef struct _JigData {
   GObject parent;
   GtkListItem* item;
   char* desc;
-  char* status0; // 0th or "user requirements" status
+  int status0; // 0th or "user requirements" status
 } JigData;
 G_DEFINE_TYPE(JigData, jig_data, G_TYPE_OBJECT)
 
 static void jig_data_init(JigData* self) {
   self->item = NULL;
   self->desc = NULL;
-  self->status0 = NULL;
+  self->status0 = 1;
 }
 
 static void jig_data_set_property(GObject* object, guint property_id, const GValue* value, GParamSpec* pspec) {
@@ -44,7 +44,7 @@ static void jig_data_set_property(GObject* object, guint property_id, const GVal
   if (property_id == PROP_DESC) {
     self->desc = g_strdup(g_value_get_string(value));
   } else if (property_id == PROP_STATUS0) {
-    self->status0 = g_strdup(g_value_get_string(value));
+    self->status0 = g_value_get_int(value);
   } else {
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
   }
@@ -55,7 +55,7 @@ static void jig_data_get_property(GObject* object, guint property_id, GValue* va
   if (property_id == PROP_DESC) {
     g_value_set_string(value, g_strdup(self->desc));
   } else if (property_id == PROP_STATUS0) {
-    g_value_set_string(value, g_strdup(self->status0));
+    g_value_set_int(value, self->status0);
   } else {
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
   }
@@ -75,11 +75,11 @@ static void jig_data_class_init(JigDataClass* class) {
   gobject_class->set_property = jig_data_set_property;
   gobject_class->get_property = jig_data_get_property;
   jig_data_properties[PROP_DESC] = g_param_spec_string("desc", "string", "string", "", G_PARAM_READWRITE);
-  jig_data_properties[PROP_STATUS0] = g_param_spec_string("status0", "string", "string", "", G_PARAM_READWRITE);
+  jig_data_properties[PROP_STATUS0] = g_param_spec_int("status0", "int", "int", 0, 10, 1, G_PARAM_READWRITE);
   g_object_class_install_properties(gobject_class, N_PROPERTIES, jig_data_properties);
 }
 
-JigData* jig_data_new_with_data(GtkListItem* item, char* desc, char* status0) {
+JigData* jig_data_new_with_data(GtkListItem* item, char* desc, int status0) {
   g_return_val_if_fail(GTK_IS_LIST_ITEM(item) || item == NULL, NULL);
   JigData *data = JIG_DATA(g_object_new(JIG_TYPE_DATA, NULL));
   data->item = item ? g_object_ref(item) : NULL;
@@ -92,7 +92,7 @@ JigData* jig_data_new_with_data(GtkListItem* item, char* desc, char* status0) {
 
 // Row addition callback
 static void new_row_cb(GtkButton* btn, TuasWindow* win) {
-  JigData* data = jig_data_new_with_data(NULL, "", "Open");
+  JigData* data = jig_data_new_with_data(NULL, "", 1);
   g_list_store_append(win->liststore, data);
   g_object_unref(data);
 }
@@ -104,7 +104,7 @@ static void write_cb(GtkButton* btn, TuasWindow* win) {
   JigData* item;
   g_print("%u items\n", g_list_model_get_n_items(lm));
   for (int i = 0; (item = JIG_DATA(g_list_model_get_item(lm, i))) != NULL; ++i) {
-    g_print("\"%s\" => %s\n", item->desc, item->status0);
+    g_print("\"%s\" => %d\n", item->desc, item->status0);
   }
 }
 
@@ -135,19 +135,6 @@ void setup_status0_cb(GtkListItemFactory* self, GtkListItem* item) {
   gtk_list_item_set_child(item, btn);
 }
 
-bool state_change_func(GBinding* binding, const GValue* lbl, GValue* rep, gpointer user_data) {
-  char* str = g_value_dup_string(lbl);
-  g_print("%s\n", str);
-  if (g_strcmp0(str, "open") == 0) {
-    g_value_set_uint(rep, 1);
-  } else if (g_strcmp0(str, "close") == 0) {
-    g_value_set_uint(rep, 2);
-  } else {
-    g_value_set_uint(rep, 0);
-  }
-  return true;
-}
-
 void state_change_cb(GtkButton* btn) {
   const char* label = gtk_button_get_label(btn);
   if (g_str_equal(label, "Open")) {
@@ -159,12 +146,25 @@ void state_change_cb(GtkButton* btn) {
   }
 }
 
+bool label_to_int(GBinding* binding, const GValue* label, GValue* res_p, gpointer user_data) {
+  char* str = g_value_dup_string(label);
+  if (g_str_equal(str, "Open")) {
+    g_value_set_int(res_p, 1);
+  } else if (g_str_equal(str, "Closed")) {
+    g_value_set_int(res_p, 2);
+  } else if (g_str_equal(str, "N/A")) {
+    g_value_set_int(res_p, 0);
+  }
+  return true;
+}
+
 void bind_status0_cb(GtkListItemFactory* self, GtkListItem* item) {
   GtkButton* btn = GTK_BUTTON(gtk_list_item_get_child(item));
   gtk_button_set_label(btn, "Open");
   g_signal_connect(btn, "clicked", G_CALLBACK(state_change_cb), NULL);
   JigData* data = JIG_DATA(gtk_list_item_get_item(item));
-  GBinding* bind = g_object_bind_property(btn, "label", data, "status0", G_BINDING_DEFAULT);
+  GBinding* bind = g_object_bind_property_with_closures(btn, "label", data, "status0",
+    G_BINDING_DEFAULT, g_cclosure_new(G_CALLBACK(label_to_int), NULL, NULL), NULL);
   g_object_set_data(G_OBJECT(item), "bind", bind);
 }
 
