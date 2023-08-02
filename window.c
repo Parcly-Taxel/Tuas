@@ -48,16 +48,8 @@ static void jig_data_set_property(GObject* object, guint property_id, const GVal
   JigData* self = JIG_DATA(object);
   if (property_id == PROP_DESC) {
     self->desc = g_strdup(g_value_get_string(value));
-  } else if (property_id == PROP_STATUS0) {
-    self->status[0] = g_strdup(g_value_get_string(value));
-  } else if (property_id == PROP_STATUS1) {
-    self->status[1] = g_strdup(g_value_get_string(value));
-  } else if (property_id == PROP_STATUS2) {
-    self->status[2] = g_strdup(g_value_get_string(value));
-  } else if (property_id == PROP_STATUS3) {
-    self->status[3] = g_strdup(g_value_get_string(value));
-  } else if (property_id == PROP_STATUS4) {
-    self->status[4] = g_strdup(g_value_get_string(value));
+  } else if (PROP_STATUS0 <= property_id && property_id <= PROP_STATUS4) {
+    self->status[property_id - PROP_STATUS0] = g_strdup(g_value_get_string(value));
   } else {
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
   }
@@ -67,16 +59,8 @@ static void jig_data_get_property(GObject* object, guint property_id, GValue* va
   JigData* self = JIG_DATA(object);
   if (property_id == PROP_DESC) {
     g_value_set_string(value, g_strdup(self->desc));
-  } else if (property_id == PROP_STATUS0) {
-    g_value_set_string(value, g_strdup(self->status[0]));
-  } else if (property_id == PROP_STATUS1) {
-    g_value_set_string(value, g_strdup(self->status[1]));
-  } else if (property_id == PROP_STATUS2) {
-    g_value_set_string(value, g_strdup(self->status[2]));
-  } else if (property_id == PROP_STATUS3) {
-    g_value_set_string(value, g_strdup(self->status[3]));
-  } else if (property_id == PROP_STATUS4) {
-    g_value_set_string(value, g_strdup(self->status[4]));
+  } else if (PROP_STATUS0 <= property_id && property_id <= PROP_STATUS4) {
+    g_value_set_string(value, g_strdup(self->status[property_id - PROP_STATUS0]));
   } else {
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
   }
@@ -96,11 +80,11 @@ static void jig_data_class_init(JigDataClass* class) {
   gobject_class->set_property = jig_data_set_property;
   gobject_class->get_property = jig_data_get_property;
   jig_data_properties[PROP_DESC] = g_param_spec_string("desc", "string", "string", "", G_PARAM_READWRITE);
-  jig_data_properties[PROP_STATUS0] = g_param_spec_string("status0", "string", "string", "", G_PARAM_READWRITE);
-  jig_data_properties[PROP_STATUS1] = g_param_spec_string("status1", "string", "string", "", G_PARAM_READWRITE);
-  jig_data_properties[PROP_STATUS2] = g_param_spec_string("status2", "string", "string", "", G_PARAM_READWRITE);
-  jig_data_properties[PROP_STATUS3] = g_param_spec_string("status3", "string", "string", "", G_PARAM_READWRITE);
-  jig_data_properties[PROP_STATUS4] = g_param_spec_string("status4", "string", "string", "", G_PARAM_READWRITE);
+  char nm[10];
+  for (int i = 0; i < 5; ++i) {
+    g_snprintf(nm, 10, "status%d", i);
+    jig_data_properties[PROP_STATUS0 + i] = g_param_spec_string(nm, "string", "string", "", G_PARAM_READWRITE);
+  }
   g_object_class_install_properties(gobject_class, N_PROPERTIES, jig_data_properties);
 }
 
@@ -184,8 +168,15 @@ void bind_status_cb(GtkListItemFactory* self, GtkListItem* item, gpointer i) {
   gtk_button_set_label(btn, "Open");
   g_signal_connect(btn, "clicked", G_CALLBACK(state_change_cb), NULL);
   JigData* data = JIG_DATA(gtk_list_item_get_item(item));
-  GBinding* bind = g_object_bind_property(btn, "label", data, "status1", G_BINDING_DEFAULT);
+  char nm[10]; g_snprintf(nm, 10, "status%d", GPOINTER_TO_INT(i));
+  GBinding* bind = g_object_bind_property(btn, "label", data, g_strdup(nm), G_BINDING_DEFAULT);
   g_object_set_data(G_OBJECT(item), "bind", bind);
+}
+
+void unbind_status_cb(GtkListItemFactory* self, GtkListItem* item) {
+  GBinding* bind = G_BINDING(g_object_get_data(G_OBJECT(item), "bind"));
+  g_binding_unbind(bind);
+  g_object_set_data(G_OBJECT(item), "bind", NULL);
 }
 
 // Begin tedious boilerplate
@@ -198,6 +189,7 @@ void tuas_window_init(TuasWindow* win) {
     GtkListItemFactory* factory = gtk_signal_list_item_factory_new();
     g_signal_connect(factory, "setup", G_CALLBACK(setup_status_cb), NULL);
     g_signal_connect(factory, "bind", G_CALLBACK(bind_status_cb), GINT_TO_POINTER(i));
+    g_signal_connect(factory, "unbind", G_CALLBACK(unbind_status_cb), NULL);
     GtkColumnViewColumn* column = gtk_column_view_column_new(g_strdup(colnames[i]), factory);
     gtk_column_view_append_column(win->columnview, column);
   }
