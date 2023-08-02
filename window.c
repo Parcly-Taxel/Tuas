@@ -71,6 +71,7 @@ static void jig_data_finalize(GObject* object) {
   if (self->desc) {
     g_free(self->desc);
   }
+  g_free(self->status);
   G_OBJECT_CLASS(jig_data_parent_class)->finalize(object);
 }
 
@@ -223,8 +224,6 @@ void app_startup(GApplication* application) {
 }
 
 // End tedious boilerplate
-
-// Use `meson setup build; ninja -C build; build/window` to compile and run
 
 int main(int argc, char* argv[]) {
   GtkApplication* app = gtk_application_new("org.smrt.Tuas", G_APPLICATION_DEFAULT_FLAGS);
