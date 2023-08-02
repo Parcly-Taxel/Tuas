@@ -14,7 +14,7 @@
         </child>
         <child>
           <object class="GtkButton">
-            <property name="icon-name">dialog-information-symbolic</property>
+            <property name="icon-name">format-text-bold-symbolic</property>
             <signal name="clicked" handler="write_cb" swapped="false" object="TuasWindow"/>
           </object>
         </child>

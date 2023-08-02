@@ -71,7 +71,6 @@ static void jig_data_finalize(GObject* object) {
   if (self->desc) {
     g_free(self->desc);
   }
-  g_free(self->status);
   G_OBJECT_CLASS(jig_data_parent_class)->finalize(object);
 }
 
@@ -106,24 +105,15 @@ JigData* jig_data_new_with_data(GtkListItem* item, char* desc,
 // End of declaration
 
 // Row addition callback
-static void new_row_cb(GtkButton* btn, TuasWindow* win) {
+void new_row_cb(GtkButton* btn, TuasWindow* win) {
   JigData* data = jig_data_new_with_data(NULL, "", "Open", "Open", "Open", "Open", "Open");
   g_list_store_append(win->liststore, data);
   g_object_unref(data);
 }
 
 // Write callback
-static void write_cb(GtkButton* btn, TuasWindow* win) {
-  GListModel* lm = G_LIST_MODEL(win->liststore);
-  JigData* item;
-  g_print("%u items\n", g_list_model_get_n_items(lm));
-  for (int i = 0; (item = JIG_DATA(g_list_model_get_item(lm, i))) != NULL; ++i) {
-    g_print("\"%s\" =>", item->desc);
-    for (int j = 0; j < 5; ++j) {
-      g_print(" %s", item->status[j]);
-    }
-    g_print("\n");
-  }
+void write_cb(GtkButton* btn, TuasWindow* win) {
+  g_print("functionality moved\n");
 }
 
 // Description callbacks
@@ -180,6 +170,32 @@ void unbind_status_cb(GtkListItemFactory* self, GtkListItem* item) {
   g_object_set_data(G_OBJECT(item), "bind", NULL);
 }
 
+// Progress label callbacks
+void setup_progress_cb(GtkListItemFactory* self, GtkListItem* item) {
+  GtkWidget* label = gtk_label_new("0 / 5");
+  gtk_list_item_set_child(item, label);
+}
+
+void progress_label_notify(GObject* item, GParamSpec* pspec, gpointer label) {
+  int n_open = 0, n_closed = 0;
+  JigData* data = JIG_DATA(item);
+  for (int i = 0; i < 5; ++i) {
+    if (g_str_equal(data->status[i], "Open")) {
+      ++n_open;
+    } else if (g_str_equal(data->status[i], "Closed")) {
+      ++n_closed;
+    }
+  }
+  char nm[6]; g_snprintf(nm, 6, "%d / %d", n_closed, n_open + n_closed);
+  gtk_label_set_text(GTK_LABEL(label), nm);
+}
+
+void bind_progress_cb(GtkListItemFactory* self, GtkListItem* item) {
+  GtkLabel* label = GTK_LABEL(gtk_list_item_get_child(item));
+  JigData* data = JIG_DATA(gtk_list_item_get_item(item));
+  g_signal_connect(data, "notify", G_CALLBACK(progress_label_notify), label);
+}
+
 // Begin tedious boilerplate
 
 char* colnames[] = {"User reqs", "Design", "Testing", "AFM", "Report"};
@@ -194,6 +210,11 @@ void tuas_window_init(TuasWindow* win) {
     GtkColumnViewColumn* column = gtk_column_view_column_new(g_strdup(colnames[i]), factory);
     gtk_column_view_append_column(win->columnview, column);
   }
+  GtkListItemFactory* factory = gtk_signal_list_item_factory_new();
+  g_signal_connect(factory, "setup", G_CALLBACK(setup_progress_cb), NULL);
+  g_signal_connect(factory, "bind", G_CALLBACK(bind_progress_cb), NULL);
+  GtkColumnViewColumn* column = gtk_column_view_column_new("Progress", factory);
+  gtk_column_view_append_column(win->columnview, column);
 }
 
 void tuas_window_class_init(TuasWindowClass* class) {
