@@ -48,67 +48,6 @@
                 </property>
               </object>
             </child>
-            <child>
-              <object class="GtkColumnViewColumn">
-                <property name="title">User reqs</property>
-                <property name="factory">
-                  <object class="GtkSignalListItemFactory">
-                    <signal name="setup" handler="setup_status0_cb"/>
-                    <signal name="bind" handler="bind_status0_cb"/>
-                  </object>
-                </property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkColumnViewColumn">
-                <property name="title">Design</property>
-                <property name="factory">
-                  <object class="GtkBuilderListItemFactory">
-                    <property name="resource">/org/smrt/Tuas/parambutton.ui</property>
-                  </object>
-                </property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkColumnViewColumn">
-                <property name="title">Testing</property>
-                <property name="factory">
-                  <object class="GtkBuilderListItemFactory">
-                    <property name="resource">/org/smrt/Tuas/parambutton.ui</property>
-                  </object>
-                </property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkColumnViewColumn">
-                <property name="title">AFM</property>
-                <property name="factory">
-                  <object class="GtkBuilderListItemFactory">
-                    <property name="resource">/org/smrt/Tuas/parambutton.ui</property>
-                  </object>
-                </property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkColumnViewColumn">
-                <property name="title">Report</property>
-                <property name="factory">
-                  <object class="GtkBuilderListItemFactory">
-                    <property name="resource">/org/smrt/Tuas/parambutton.ui</property>
-                  </object>
-                </property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkColumnViewColumn">
-                <property name="title">Latest update</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkColumnViewColumn">
-                <property name="title">Progress</property>
-              </object>
-            </child>
           </object>
         </child>
       </object>
