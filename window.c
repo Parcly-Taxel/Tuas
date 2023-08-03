@@ -80,9 +80,9 @@ static void jig_data_class_init(JigDataClass* class) {
   gobject_class->set_property = jig_data_set_property;
   gobject_class->get_property = jig_data_get_property;
   jig_data_properties[PROP_DESC] = g_param_spec_string("desc", "string", "string", "", G_PARAM_READWRITE);
-  char nm[10];
+  char nm[8];
   for (int i = 0; i < 5; ++i) {
-    g_snprintf(nm, 10, "status%d", i);
+    g_snprintf(nm, 8, "status%d", i);
     jig_data_properties[PROP_STATUS0 + i] = g_param_spec_string(nm, "string", "string", "", G_PARAM_READWRITE);
   }
   g_object_class_install_properties(gobject_class, N_PROPERTIES, jig_data_properties);
@@ -109,11 +109,6 @@ void new_row_cb(GtkButton* btn, TuasWindow* win) {
   JigData* data = jig_data_new_with_data(NULL, "", "Open", "Open", "Open", "Open", "Open");
   g_list_store_append(win->liststore, data);
   g_object_unref(data);
-}
-
-// Write callback
-void write_cb(GtkButton* btn, TuasWindow* win) {
-  g_print("functionality moved\n");
 }
 
 // Description callbacks
@@ -159,7 +154,7 @@ void bind_status_cb(GtkListItemFactory* self, GtkListItem* item, gpointer i) {
   gtk_button_set_label(btn, "Open");
   g_signal_connect(btn, "clicked", G_CALLBACK(state_change_cb), NULL);
   JigData* data = JIG_DATA(gtk_list_item_get_item(item));
-  char nm[10]; g_snprintf(nm, 10, "status%d", GPOINTER_TO_INT(i));
+  char nm[8]; g_snprintf(nm, 8, "status%d", GPOINTER_TO_INT(i));
   GBinding* bind = g_object_bind_property(btn, "label", data, g_strdup(nm), G_BINDING_DEFAULT);
   g_object_set_data(G_OBJECT(item), "bind", bind);
 }
@@ -192,8 +187,33 @@ void progress_label_notify(GObject* item, GParamSpec* pspec, gpointer label) {
 
 void bind_progress_cb(GtkListItemFactory* self, GtkListItem* item) {
   GtkLabel* label = GTK_LABEL(gtk_list_item_get_child(item));
-  JigData* data = JIG_DATA(gtk_list_item_get_item(item));
+  JigData* data = gtk_list_item_get_item(item);
   g_signal_connect(data, "notify", G_CALLBACK(progress_label_notify), label);
+}
+
+// Save callbacks
+void save_cb(GObject* fd, GAsyncResult* res, gpointer listmodel) {
+  GFile* file = gtk_file_dialog_save_finish(GTK_FILE_DIALOG(fd), res, NULL);
+  if (!file) {
+    return;
+  }
+  GListModel* lm = listmodel;
+  JigData* item;
+  char* text = "";
+  for (int n = 0; (item = g_list_model_get_item(lm, n)) != NULL; ++n) {
+    char line[6] = {0};
+    for (int i = 0; i < 5; ++i) {
+      line[i] = item->status[i][0];
+    }
+    text = g_strconcat(text, line, " ", item->desc, "\n", NULL);
+  }
+  g_file_replace_contents(file, text, strlen(text), NULL, false, G_FILE_CREATE_NONE, NULL, NULL, NULL);
+}
+
+void save_button_cb(GtkButton* btn, TuasWindow* win) {
+  GtkFileDialog* fd = gtk_file_dialog_new();
+  gtk_file_dialog_set_initial_folder(fd, g_file_new_for_path(g_get_current_dir()));
+  gtk_file_dialog_save(fd, GTK_WINDOW(win), NULL, save_cb, win->liststore);
 }
 
 // Begin tedious boilerplate
@@ -222,11 +242,11 @@ void tuas_window_class_init(TuasWindowClass* class) {
   gtk_widget_class_set_template_from_resource(wc, "/org/smrt/Tuas/window.ui");
   gtk_widget_class_bind_template_child(wc, TuasWindow, columnview);
   gtk_widget_class_bind_template_child(wc, TuasWindow, liststore);
-  gtk_widget_class_bind_template_callback(wc, new_row_cb);
   gtk_widget_class_bind_template_callback(wc, setup_desc_cb);
   gtk_widget_class_bind_template_callback(wc, bind_desc_cb);
   gtk_widget_class_bind_template_callback(wc, unbind_desc_cb);
-  gtk_widget_class_bind_template_callback(wc, write_cb);
+  gtk_widget_class_bind_template_callback(wc, new_row_cb);
+  gtk_widget_class_bind_template_callback(wc, save_button_cb);
 }
 
 GtkWidget* tuas_window_new(GtkApplication* app) {

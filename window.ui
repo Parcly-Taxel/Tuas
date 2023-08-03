@@ -14,8 +14,8 @@
         </child>
         <child>
           <object class="GtkButton">
-            <property name="icon-name">format-text-bold-symbolic</property>
-            <signal name="clicked" handler="write_cb" swapped="false" object="TuasWindow"/>
+            <property name="icon-name">document-save-symbolic</property>
+            <signal name="clicked" handler="save_button_cb" swapped="false" object="TuasWindow"/>
           </object>
         </child>
       </object>
