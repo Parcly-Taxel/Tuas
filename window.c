@@ -127,10 +127,10 @@ void bind_desc_cb(GtkListItemFactory* self, GtkListItem* item) {
   g_object_set_data(G_OBJECT(item), "bind", bind);
 }
 
-void unbind_desc_cb(GtkListItemFactory* factory, GtkListItem* listitem) {
-  GBinding* bind = G_BINDING(g_object_get_data(G_OBJECT(listitem), "bind"));
+void unbind_desc_cb(GtkListItemFactory* self, GtkListItem* item) {
+  GBinding* bind = G_BINDING(g_object_get_data(G_OBJECT(item), "bind"));
   g_binding_unbind(bind);
-  g_object_set_data(G_OBJECT(listitem), "bind", NULL);
+  g_object_set_data(G_OBJECT(item), "bind", NULL);
 }
 
 // Parameter button callbacks
@@ -256,6 +256,11 @@ void open_button_cb(GtkButton* btn, TuasWindow* win) {
   gtk_file_dialog_open(fd, GTK_WINDOW(win), NULL, open_cb, win->liststore);
 }
 
+// Deletion callback
+void delete_button_cb(GtkButton* btn, TuasWindow* win) {
+  g_list_store_remove_all(win->liststore);
+}
+
 // Begin tedious boilerplate
 
 char* colnames[] = {"User reqs", "Design", "Testing", "AFM", "Report"};
@@ -288,6 +293,7 @@ void tuas_window_class_init(TuasWindowClass* class) {
   gtk_widget_class_bind_template_callback(wc, new_row_cb);
   gtk_widget_class_bind_template_callback(wc, open_button_cb);
   gtk_widget_class_bind_template_callback(wc, save_button_cb);
+  gtk_widget_class_bind_template_callback(wc, delete_button_cb);
 }
 
 GtkWidget* tuas_window_new(GtkApplication* app) {

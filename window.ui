@@ -9,25 +9,32 @@
         <child>
           <object class="GtkButton">
             <property name="icon-name">list-add-symbolic</property>
+            <property name="tooltip-text">New jig</property>
             <signal name="clicked" handler="new_row_cb" swapped="false" object="TuasWindow"/>
           </object>
         </child>
         <child>
           <object class="GtkButton">
             <property name="icon-name">document-open-symbolic</property>
+            <property name="tooltip-text">Open</property>
             <signal name="clicked" handler="open_button_cb" swapped="false" object="TuasWindow"/>
           </object>
         </child>
         <child>
           <object class="GtkButton">
             <property name="icon-name">document-save-symbolic</property>
+            <property name="tooltip-text">Save</property>
             <signal name="clicked" handler="save_button_cb" swapped="false" object="TuasWindow"/>
           </object>
         </child>
         <child type="end">
           <object class="GtkButton">
             <property name="icon-name">list-remove-symbolic</property>
-            <!--<signal name="clicked" handler="remove_button_cb" swapped="false" object="TuasWindow"/>-->
+            <property name="tooltip-text">Delete</property>
+            <style>
+              <class name="destructive-action"/>
+            </style>
+            <signal name="clicked" handler="delete_button_cb" swapped="false" object="TuasWindow"/>
           </object>
         </child>
       </object>
@@ -56,6 +63,7 @@
                   <object class="GtkSignalListItemFactory">
                     <signal name="setup" handler="setup_desc_cb"/>
                     <signal name="bind" handler="bind_desc_cb"/>
+                    <signal name="unbind" handler="unbind_desc_cb"/>
                   </object>
                 </property>
               </object>
