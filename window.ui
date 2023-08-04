@@ -6,10 +6,16 @@
     <property name="default-height">500</property>
     <child type="titlebar">
       <object class="GtkHeaderBar">
-        <child type="start">
+        <child>
           <object class="GtkButton">
             <property name="icon-name">list-add-symbolic</property>
             <signal name="clicked" handler="new_row_cb" swapped="false" object="TuasWindow"/>
+          </object>
+        </child>
+        <child>
+          <object class="GtkButton">
+            <property name="icon-name">document-open-symbolic</property>
+            <signal name="clicked" handler="open_button_cb" swapped="false" object="TuasWindow"/>
           </object>
         </child>
         <child>

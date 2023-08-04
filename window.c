@@ -122,6 +122,7 @@ void bind_desc_cb(GtkListItemFactory* self, GtkListItem* item) {
   GtkEntryBuffer* buffer = gtk_entry_get_buffer(entry);
   gtk_entry_set_placeholder_text(entry, "Jig description");
   JigData* data = JIG_DATA(gtk_list_item_get_item(item));
+  gtk_editable_set_text(GTK_EDITABLE(entry), data->desc);
   GBinding* bind = g_object_bind_property(buffer, "text", data, "desc", G_BINDING_DEFAULT);
   g_object_set_data(G_OBJECT(item), "bind", bind);
 }
@@ -151,9 +152,9 @@ void state_change_cb(GtkButton* btn) {
 
 void bind_status_cb(GtkListItemFactory* self, GtkListItem* item, gpointer i) {
   GtkButton* btn = GTK_BUTTON(gtk_list_item_get_child(item));
-  gtk_button_set_label(btn, "Open");
   g_signal_connect(btn, "clicked", G_CALLBACK(state_change_cb), NULL);
   JigData* data = JIG_DATA(gtk_list_item_get_item(item));
+  gtk_button_set_label(btn, data->status[GPOINTER_TO_INT(i)]);
   char nm[8]; g_snprintf(nm, 8, "status%d", GPOINTER_TO_INT(i));
   GBinding* bind = g_object_bind_property(btn, "label", data, g_strdup(nm), G_BINDING_DEFAULT);
   g_object_set_data(G_OBJECT(item), "bind", bind);
@@ -216,6 +217,44 @@ void save_button_cb(GtkButton* btn, TuasWindow* win) {
   gtk_file_dialog_save(fd, GTK_WINDOW(win), NULL, save_cb, win->liststore);
 }
 
+// Open callbacks
+char* abbrev_to_label(char s) {
+  switch (s) {
+    case 'C': return "Closed"; break;
+    case 'N': return "N/A"; break;
+    case 'O':
+     default: return "Open"; break;
+  }
+}
+
+void open_cb(GObject* fd, GAsyncResult* res, gpointer liststore) {
+  GFile* file = gtk_file_dialog_open_finish(GTK_FILE_DIALOG(fd), res, NULL);
+  if (!file) {
+    return;
+  }
+  GListStore* lm = liststore;
+  g_list_store_remove_all(lm);
+  char* raw = NULL;
+  g_file_load_contents(file, NULL, &raw, NULL, NULL, NULL);
+  char** lines = g_strsplit(raw, "\n", -1);
+  g_free(raw);
+  char* line;
+  for (int i = 0; (line = lines[i]) != NULL && strlen(line) >= 6; ++i) {
+    JigData* data = jig_data_new_with_data(NULL, g_strdup(line + 6),
+      abbrev_to_label(line[0]), abbrev_to_label(line[1]), abbrev_to_label(line[2]),
+      abbrev_to_label(line[3]), abbrev_to_label(line[4]));
+    g_list_store_append(lm, data);
+    g_object_unref(data);
+  }
+  g_strfreev(lines);
+}
+
+void open_button_cb(GtkButton* btn, TuasWindow* win) {
+  GtkFileDialog* fd = gtk_file_dialog_new();
+  gtk_file_dialog_set_initial_folder(fd, g_file_new_for_path(g_get_current_dir()));
+  gtk_file_dialog_open(fd, GTK_WINDOW(win), NULL, open_cb, win->liststore);
+}
+
 // Begin tedious boilerplate
 
 char* colnames[] = {"User reqs", "Design", "Testing", "AFM", "Report"};
@@ -246,6 +285,7 @@ void tuas_window_class_init(TuasWindowClass* class) {
   gtk_widget_class_bind_template_callback(wc, bind_desc_cb);
   gtk_widget_class_bind_template_callback(wc, unbind_desc_cb);
   gtk_widget_class_bind_template_callback(wc, new_row_cb);
+  gtk_widget_class_bind_template_callback(wc, open_button_cb);
   gtk_widget_class_bind_template_callback(wc, save_button_cb);
 }
 
