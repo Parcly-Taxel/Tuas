@@ -29,11 +29,18 @@
         </child>
         <child type="end">
           <object class="GtkButton">
-            <property name="icon-name">list-remove-symbolic</property>
-            <property name="tooltip-text">Delete</property>
+            <property name="icon-name">user-trash-symbolic</property>
+            <property name="tooltip-text">Delete all</property>
             <style>
               <class name="destructive-action"/>
             </style>
+            <signal name="clicked" handler="delete_all_button_cb" swapped="false" object="TuasWindow"/>
+          </object>
+        </child>
+        <child type="end">
+          <object class="GtkButton">
+            <property name="icon-name">list-remove-symbolic</property>
+            <property name="tooltip-text">Clear completed jigs</property>
             <signal name="clicked" handler="delete_button_cb" swapped="false" object="TuasWindow"/>
           </object>
         </child>

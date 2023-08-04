@@ -256,8 +256,25 @@ void open_button_cb(GtkButton* btn, TuasWindow* win) {
   gtk_file_dialog_open(fd, GTK_WINDOW(win), NULL, open_cb, win->liststore);
 }
 
-// Deletion callback
+// Deletion (of completed jigs) callback
 void delete_button_cb(GtkButton* btn, TuasWindow* win) {
+  GListStore* ls = win->liststore;
+  JigData* item;
+  for (int n = 0; (item = g_list_model_get_item(G_LIST_MODEL(ls), n)) != NULL;) {
+    int has_open = 0;
+    for (int i = 0; i < 5; ++i) {
+      has_open += g_str_equal(item->status[i], "Open");
+    }
+    if (has_open > 0) {
+      ++n;
+    } else {
+      g_list_store_remove(ls, n);
+    }
+  }
+}
+
+// Deletion (of everything) callback
+void delete_all_button_cb(GtkButton* btn, TuasWindow* win) {
   g_list_store_remove_all(win->liststore);
 }
 
@@ -294,6 +311,7 @@ void tuas_window_class_init(TuasWindowClass* class) {
   gtk_widget_class_bind_template_callback(wc, open_button_cb);
   gtk_widget_class_bind_template_callback(wc, save_button_cb);
   gtk_widget_class_bind_template_callback(wc, delete_button_cb);
+  gtk_widget_class_bind_template_callback(wc, delete_all_button_cb);
 }
 
 GtkWidget* tuas_window_new(GtkApplication* app) {
