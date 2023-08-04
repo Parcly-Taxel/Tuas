@@ -189,6 +189,7 @@ void progress_label_notify(GObject* item, GParamSpec* pspec, gpointer label) {
 void bind_progress_cb(GtkListItemFactory* self, GtkListItem* item) {
   GtkLabel* label = GTK_LABEL(gtk_list_item_get_child(item));
   JigData* data = gtk_list_item_get_item(item);
+  progress_label_notify(G_OBJECT(data), NULL, label);
   g_signal_connect(data, "notify", G_CALLBACK(progress_label_notify), label);
 }
 

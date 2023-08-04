@@ -24,6 +24,12 @@
             <signal name="clicked" handler="save_button_cb" swapped="false" object="TuasWindow"/>
           </object>
         </child>
+        <child type="end">
+          <object class="GtkButton">
+            <property name="icon-name">list-remove-symbolic</property>
+            <!--<signal name="clicked" handler="remove_button_cb" swapped="false" object="TuasWindow"/>-->
+          </object>
+        </child>
       </object>
     </child>
     <child>
