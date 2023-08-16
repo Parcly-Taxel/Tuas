@@ -173,16 +173,14 @@ void setup_progress_cb(GtkListItemFactory* self, GtkListItem* item) {
 }
 
 void progress_label_notify(GObject* item, GParamSpec* pspec, gpointer label) {
-  int n_open = 0, n_closed = 0;
+  int n_open = 0;
   JigData* data = JIG_DATA(item);
   for (int i = 0; i < 5; ++i) {
     if (g_str_equal(data->status[i], "Open")) {
       ++n_open;
-    } else if (g_str_equal(data->status[i], "Closed")) {
-      ++n_closed;
     }
   }
-  char nm[6]; g_snprintf(nm, 6, "%d / %d", n_closed, n_open + n_closed);
+  char nm[6]; g_snprintf(nm, 6, "%d / 5", 5 - n_open);
   gtk_label_set_text(GTK_LABEL(label), nm);
 }
 
