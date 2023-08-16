@@ -65,11 +65,25 @@
             <child>
               <object class="GtkColumnViewColumn">
                 <property name="title">Description</property>
-                <property name="expand">true</property>
+                <property name="fixed-width">700</property>
+                <property name="resizable">true</property>
                 <property name="factory">
                   <object class="GtkSignalListItemFactory">
                     <signal name="setup" handler="setup_desc_cb"/>
                     <signal name="bind" handler="bind_desc_cb"/>
+                    <signal name="unbind" handler="unbind_desc_cb"/>
+                  </object>
+                </property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkColumnViewColumn">
+                <property name="title">Latest update</property>
+                <property name="expand">true</property>
+                <property name="factory">
+                  <object class="GtkSignalListItemFactory">
+                    <signal name="setup" handler="setup_desc_cb"/>
+                    <signal name="bind" handler="bind_lupdate_cb"/>
                     <signal name="unbind" handler="unbind_desc_cb"/>
                   </object>
                 </property>

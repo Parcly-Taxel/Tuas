@@ -22,6 +22,7 @@ enum {
   PROP_STATUS2 = 4,
   PROP_STATUS3 = 5,
   PROP_STATUS4 = 6,
+  PROP_LUPDATE = 7,
   N_PROPERTIES
 };
 static GParamSpec *jig_data_properties[N_PROPERTIES] = {NULL};
@@ -33,6 +34,7 @@ typedef struct _JigData {
   GtkListItem* item;
   char* desc;
   char* status[5];
+  char* lupdate;
 } JigData;
 G_DEFINE_TYPE(JigData, jig_data, G_TYPE_OBJECT)
 
@@ -42,6 +44,7 @@ static void jig_data_init(JigData* self) {
   for (int i = 0; i < 5; ++i) {
     self->status[i] = NULL;
   }
+  self->lupdate = NULL;
 }
 
 static void jig_data_set_property(GObject* object, guint property_id, const GValue* value, GParamSpec* pspec) {
@@ -50,6 +53,8 @@ static void jig_data_set_property(GObject* object, guint property_id, const GVal
     self->desc = g_strdup(g_value_get_string(value));
   } else if (PROP_STATUS0 <= property_id && property_id <= PROP_STATUS4) {
     self->status[property_id - PROP_STATUS0] = g_strdup(g_value_get_string(value));
+  } else if (property_id == PROP_LUPDATE) {
+    self->lupdate = g_strdup(g_value_get_string(value));
   } else {
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
   }
@@ -61,6 +66,8 @@ static void jig_data_get_property(GObject* object, guint property_id, GValue* va
     g_value_set_string(value, g_strdup(self->desc));
   } else if (PROP_STATUS0 <= property_id && property_id <= PROP_STATUS4) {
     g_value_set_string(value, g_strdup(self->status[property_id - PROP_STATUS0]));
+  } else if (property_id == PROP_LUPDATE) {
+    g_value_set_string(value, g_strdup(self->lupdate));
   } else {
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
   }
@@ -70,6 +77,9 @@ static void jig_data_finalize(GObject* object) {
   JigData* self = JIG_DATA(object);
   if (self->desc) {
     g_free(self->desc);
+  }
+  if (self->lupdate) {
+    g_free(self->lupdate);
   }
   G_OBJECT_CLASS(jig_data_parent_class)->finalize(object);
 }
@@ -85,11 +95,12 @@ static void jig_data_class_init(JigDataClass* class) {
     g_snprintf(nm, 8, "status%d", i);
     jig_data_properties[PROP_STATUS0 + i] = g_param_spec_string(nm, "string", "string", "", G_PARAM_READWRITE);
   }
+  jig_data_properties[PROP_LUPDATE] = g_param_spec_string("lupdate", "string", "string", "", G_PARAM_READWRITE);
   g_object_class_install_properties(gobject_class, N_PROPERTIES, jig_data_properties);
 }
 
 JigData* jig_data_new_with_data(GtkListItem* item, char* desc,
-    char* status0, char* status1, char* status2, char* status3, char* status4) {
+    char* status0, char* status1, char* status2, char* status3, char* status4, char* lupdate) {
   g_return_val_if_fail(GTK_IS_LIST_ITEM(item) || item == NULL, NULL);
   JigData *data = JIG_DATA(g_object_new(JIG_TYPE_DATA, NULL));
   data->item = item ? g_object_ref(item) : NULL;
@@ -99,6 +110,7 @@ JigData* jig_data_new_with_data(GtkListItem* item, char* desc,
   data->status[2] = g_strdup(status2);
   data->status[3] = g_strdup(status3);
   data->status[4] = g_strdup(status4);
+  data->lupdate = g_strdup(lupdate);
   return data;
 }
 
@@ -106,7 +118,8 @@ JigData* jig_data_new_with_data(GtkListItem* item, char* desc,
 
 // Row addition callback
 void new_row_cb(GtkButton* btn, TuasWindow* win) {
-  JigData* data = jig_data_new_with_data(NULL, "", "Open", "Open", "Open", "Open", "Open");
+  JigData* data = jig_data_new_with_data(NULL, "",
+    "Open", "Open", "Open", "Open", "Open", "Started");
   g_list_store_append(win->liststore, data);
   g_object_unref(data);
 }
@@ -166,6 +179,17 @@ void unbind_status_cb(GtkListItemFactory* self, GtkListItem* item) {
   g_object_set_data(G_OBJECT(item), "bind", NULL);
 }
 
+// Latest update callbacks (setup and unbind callbacks are shared with desc)
+void bind_lupdate_cb(GtkListItemFactory* self, GtkListItem* item) {
+  GtkEntry* entry = GTK_ENTRY(gtk_list_item_get_child(item));
+  GtkEntryBuffer* buffer = gtk_entry_get_buffer(entry);
+  gtk_entry_set_placeholder_text(entry, "Completed");
+  JigData* data = JIG_DATA(gtk_list_item_get_item(item));
+  gtk_editable_set_text(GTK_EDITABLE(entry), data->lupdate);
+  GBinding* bind = g_object_bind_property(buffer, "text", data, "lupdate", G_BINDING_DEFAULT);
+  g_object_set_data(G_OBJECT(item), "bind", bind);
+}
+
 // Progress label callbacks
 void setup_progress_cb(GtkListItemFactory* self, GtkListItem* item) {
   GtkWidget* label = gtk_label_new("0 / 5");
@@ -205,9 +229,10 @@ void save_cb(GObject* fd, GAsyncResult* res, gpointer listmodel) {
     for (int i = 0; i < 5; ++i) {
       line[i] = item->status[i][0];
     }
-    text = g_strconcat(text, line, " ", item->desc, "\n", NULL);
+    text = g_strconcat(text, line, "|", item->desc, "|", item->lupdate, "\n", NULL);
   }
   g_file_replace_contents(file, text, strlen(text), NULL, false, G_FILE_CREATE_NONE, NULL, NULL, NULL);
+  g_free(text);
 }
 
 void save_button_cb(GtkButton* btn, TuasWindow* win) {
@@ -236,16 +261,19 @@ void open_cb(GObject* fd, GAsyncResult* res, gpointer liststore) {
   char* raw = NULL;
   g_file_load_contents(file, NULL, &raw, NULL, NULL, NULL);
   char** lines = g_strsplit(raw, "\n", -1);
+  char** fields;
   g_free(raw);
-  char* line;
-  for (int i = 0; (line = lines[i]) != NULL && strlen(line) >= 6; ++i) {
-    JigData* data = jig_data_new_with_data(NULL, g_strdup(line + 6),
-      abbrev_to_label(line[0]), abbrev_to_label(line[1]), abbrev_to_label(line[2]),
-      abbrev_to_label(line[3]), abbrev_to_label(line[4]));
+  for (int i = 0; (fields = g_strsplit(lines[i], "|", 3)) != NULL && strlen(lines[i]) >= 6; ++i) {
+    char* p = fields[0];
+    JigData* data = jig_data_new_with_data(NULL, fields[1],
+      abbrev_to_label(p[0]), abbrev_to_label(p[1]), abbrev_to_label(p[2]),
+      abbrev_to_label(p[3]), abbrev_to_label(p[4]),
+      fields[2]);
     g_list_store_append(lm, data);
     g_object_unref(data);
   }
   g_strfreev(lines);
+  g_strfreev(fields);
 }
 
 void open_button_cb(GtkButton* btn, TuasWindow* win) {
@@ -288,7 +316,7 @@ void tuas_window_init(TuasWindow* win) {
     g_signal_connect(factory, "bind", G_CALLBACK(bind_status_cb), GINT_TO_POINTER(i));
     g_signal_connect(factory, "unbind", G_CALLBACK(unbind_status_cb), NULL);
     GtkColumnViewColumn* column = gtk_column_view_column_new(g_strdup(colnames[i]), factory);
-    gtk_column_view_append_column(win->columnview, column);
+    gtk_column_view_insert_column(win->columnview, i + 1, column);
   }
   GtkListItemFactory* factory = gtk_signal_list_item_factory_new();
   g_signal_connect(factory, "setup", G_CALLBACK(setup_progress_cb), NULL);
@@ -305,6 +333,7 @@ void tuas_window_class_init(TuasWindowClass* class) {
   gtk_widget_class_bind_template_callback(wc, setup_desc_cb);
   gtk_widget_class_bind_template_callback(wc, bind_desc_cb);
   gtk_widget_class_bind_template_callback(wc, unbind_desc_cb);
+  gtk_widget_class_bind_template_callback(wc, bind_lupdate_cb);
   gtk_widget_class_bind_template_callback(wc, new_row_cb);
   gtk_widget_class_bind_template_callback(wc, open_button_cb);
   gtk_widget_class_bind_template_callback(wc, save_button_cb);
