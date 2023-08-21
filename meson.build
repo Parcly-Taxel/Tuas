@@ -1,9 +1,9 @@
-project('list5', 'c')
+project('tuas', 'c')
 
-gtkdep = dependency('gtk4')
+gtkdep=dependency('gtk4')
 
 gnome=import('gnome')
-resources = gnome.compile_resources('resources','window.gresource.xml')
+resources=gnome.compile_resources('resources','window.gresource.xml')
 
 sourcefiles=files('window.c')
 

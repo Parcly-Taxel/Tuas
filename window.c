@@ -119,7 +119,7 @@ JigData* jig_data_new_with_data(GtkListItem* item, char* desc,
 // Row addition callback
 void new_row_cb(GtkButton* btn, TuasWindow* win) {
   JigData* data = jig_data_new_with_data(NULL, "",
-    "Open", "Open", "Open", "Open", "Open", "Started");
+    "Open", "Open", "Open", "Open", "Open", "");
   g_list_store_append(win->liststore, data);
   g_object_unref(data);
 }
@@ -183,7 +183,7 @@ void unbind_status_cb(GtkListItemFactory* self, GtkListItem* item) {
 void bind_lupdate_cb(GtkListItemFactory* self, GtkListItem* item) {
   GtkEntry* entry = GTK_ENTRY(gtk_list_item_get_child(item));
   GtkEntryBuffer* buffer = gtk_entry_get_buffer(entry);
-  gtk_entry_set_placeholder_text(entry, "Completed");
+  gtk_entry_set_placeholder_text(entry, "Started");
   JigData* data = JIG_DATA(gtk_list_item_get_item(item));
   gtk_editable_set_text(GTK_EDITABLE(entry), data->lupdate);
   GBinding* bind = g_object_bind_property(buffer, "text", data, "lupdate", G_BINDING_DEFAULT);
