@@ -118,8 +118,7 @@ JigData* jig_data_new_with_data(GtkListItem* item, char* desc,
 
 // Row addition callback
 void new_row_cb(GtkButton* btn, TuasWindow* win) {
-  JigData* data = jig_data_new_with_data(NULL, "",
-    "Open", "Open", "Open", "Open", "Open", "");
+  JigData* data = jig_data_new_with_data(NULL, "", "Open", "Open", "Open", "Open", "Open", "");
   g_list_store_append(win->liststore, data);
   g_object_unref(data);
 }
@@ -215,6 +214,16 @@ void bind_progress_cb(GtkListItemFactory* self, GtkListItem* item) {
   g_signal_connect(data, "notify", G_CALLBACK(progress_label_notify), label);
 }
 
+// String processing
+
+char* quote_string(char* in) {
+  if (g_strstr_len(in, -1, ",") == NULL && g_strstr_len(in, -1, "\"") == NULL) {
+    return in;
+  }
+  GRegex* quote_re = g_regex_new("\"", 0, 0, NULL);
+  return g_strconcat("\"", g_regex_replace(quote_re, in, -1, 0, "\"\"", 0, NULL), "\"", NULL);
+}
+
 // Save callbacks
 void save_cb(GObject* fd, GAsyncResult* res, gpointer listmodel) {
   GFile* file = gtk_file_dialog_save_finish(GTK_FILE_DIALOG(fd), res, NULL);
@@ -229,7 +238,8 @@ void save_cb(GObject* fd, GAsyncResult* res, gpointer listmodel) {
     for (int i = 0; i < 5; ++i) {
       line[i] = item->status[i][0];
     }
-    text = g_strconcat(text, line, "|", item->desc, "|", item->lupdate, "\n", NULL);
+    text = g_strconcat(text, line, ",", quote_string(item->desc),
+                                   ",", quote_string(item->lupdate), "\n", NULL);
   }
   g_file_replace_contents(file, text, strlen(text), NULL, false, G_FILE_CREATE_NONE, NULL, NULL, NULL);
   g_free(text);
@@ -251,6 +261,32 @@ char* abbrev_to_label(char s) {
   }
 }
 
+// ! More string processing!
+
+JigData* jig_data_new_from_line(char* ln) {
+  char* desc;
+  char* comma; // index of the second comma separator
+  char* lupdate;
+  GRegex* dquote_re = g_regex_new("\"\"", 0, 0, NULL);
+  if (ln[6] != '\"') { // description is not quoted
+    comma = g_strstr_len(ln + 6, -1, ",");
+    desc = g_strndup(ln + 6, comma - (ln + 6));
+  } else {
+    comma = g_strstr_len(ln + 7, -1, "\",");
+    desc = g_regex_replace(dquote_re, g_strndup(ln + 7, comma++ - (ln + 7)), -1, 0, "\"", 0, NULL);
+  }
+  if (strlen(comma) > 1 && comma[1] == '"') {
+    lupdate = g_regex_replace(dquote_re, comma + 2, -1, 0, "\"", 0, NULL);
+    lupdate = g_strndup(lupdate, strlen(lupdate) - 1);
+  } else {
+    lupdate = comma + 1;
+  }
+  JigData* res = jig_data_new_with_data(NULL, desc,
+    abbrev_to_label(ln[0]), abbrev_to_label(ln[1]), abbrev_to_label(ln[2]),
+    abbrev_to_label(ln[3]), abbrev_to_label(ln[4]), lupdate);
+  return res;
+}
+
 void open_cb(GObject* fd, GAsyncResult* res, gpointer liststore) {
   GFile* file = gtk_file_dialog_open_finish(GTK_FILE_DIALOG(fd), res, NULL);
   if (!file) {
@@ -261,19 +297,13 @@ void open_cb(GObject* fd, GAsyncResult* res, gpointer liststore) {
   char* raw = NULL;
   g_file_load_contents(file, NULL, &raw, NULL, NULL, NULL);
   char** lines = g_strsplit(raw, "\n", -1);
-  char** fields;
   g_free(raw);
-  for (int i = 0; (fields = g_strsplit(lines[i], "|", 3)) != NULL && strlen(lines[i]) >= 6; ++i) {
-    char* p = fields[0];
-    JigData* data = jig_data_new_with_data(NULL, fields[1],
-      abbrev_to_label(p[0]), abbrev_to_label(p[1]), abbrev_to_label(p[2]),
-      abbrev_to_label(p[3]), abbrev_to_label(p[4]),
-      fields[2]);
+  for (int i = 0; strlen(lines[i]) > 0; ++i) {
+    JigData* data = jig_data_new_from_line(lines[i]);
     g_list_store_append(lm, data);
     g_object_unref(data);
   }
   g_strfreev(lines);
-  g_strfreev(fields);
 }
 
 void open_button_cb(GtkButton* btn, TuasWindow* win) {
