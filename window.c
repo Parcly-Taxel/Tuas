@@ -321,16 +321,16 @@ void open_button_cb(GtkButton* btn, TuasWindow* win) {
   gtk_file_dialog_open(fd, GTK_WINDOW(win), NULL, open_cb, win->liststore);
 }
 
-// Deletion (of completed jigs) callback
+// Deletion (of completed tasks) callback
 void delete_button_cb(GtkButton* btn, TuasWindow* win) {
   GListStore* ls = win->liststore;
   JigData* item;
   for (int n = 0; (item = g_list_model_get_item(G_LIST_MODEL(ls), n)) != NULL;) {
-    int has_open = 0;
+    int n_done = 0;
     for (int i = 0; i < 5; ++i) {
-      has_open += g_str_equal(item->status[i], "Open");
+      n_done += g_str_equal(item->status[i], "Done");
     }
-    if (has_open > 0) {
+    if (n_done < 5) {
       ++n;
     } else {
       g_list_store_remove(ls, n);
