@@ -118,7 +118,7 @@ JigData* jig_data_new_with_data(GtkListItem* item, char* desc,
 
 // Row addition callback
 void new_row_cb(GtkButton* btn, TuasWindow* win) {
-  JigData* data = jig_data_new_with_data(NULL, "", "Open", "Open", "Open", "Open", "Open", "");
+  JigData* data = jig_data_new_with_data(NULL, "", "—", "—", "—", "—", "—", "");
   g_list_store_append(win->liststore, data);
   g_object_unref(data);
 }
@@ -132,7 +132,7 @@ void setup_desc_cb(GtkListItemFactory* self, GtkListItem* item) {
 void bind_desc_cb(GtkListItemFactory* self, GtkListItem* item) {
   GtkEntry* entry = GTK_ENTRY(gtk_list_item_get_child(item));
   GtkEntryBuffer* buffer = gtk_entry_get_buffer(entry);
-  gtk_entry_set_placeholder_text(entry, "Jig description");
+  // gtk_entry_set_placeholder_text(entry, "Jig description");
   JigData* data = JIG_DATA(gtk_list_item_get_item(item));
   gtk_editable_set_text(GTK_EDITABLE(entry), data->desc);
   GBinding* bind = g_object_bind_property(buffer, "text", data, "desc", G_BINDING_DEFAULT);
@@ -153,12 +153,12 @@ void setup_status_cb(GtkListItemFactory* self, GtkListItem* item) {
 
 void state_change_cb(GtkButton* btn) {
   const char* label = gtk_button_get_label(btn);
-  if (g_str_equal(label, "Open")) {
-    gtk_button_set_label(btn, "Closed");
-  } else if (g_str_equal(label, "Closed")) {
-    gtk_button_set_label(btn, "N/A");
-  } else if (g_str_equal(label, "N/A")) {
-    gtk_button_set_label(btn, "Open");
+  if (g_str_equal(label, "—")) {
+    gtk_button_set_label(btn, "Done");
+  } else if (g_str_equal(label, "Done")) {
+    gtk_button_set_label(btn, "Pending");
+  } else if (g_str_equal(label, "Pending")) {
+    gtk_button_set_label(btn, "—");
   }
 }
 
@@ -196,14 +196,14 @@ void setup_progress_cb(GtkListItemFactory* self, GtkListItem* item) {
 }
 
 void progress_label_notify(GObject* item, GParamSpec* pspec, gpointer label) {
-  int n_open = 0;
+  int n_done = 0;
   JigData* data = JIG_DATA(item);
   for (int i = 0; i < 5; ++i) {
-    if (g_str_equal(data->status[i], "Open")) {
-      ++n_open;
+    if (g_str_equal(data->status[i], "Done")) {
+      ++n_done;
     }
   }
-  char nm[6]; g_snprintf(nm, 6, "%d / 5", 5 - n_open);
+  char nm[6]; g_snprintf(nm, 6, "%d / 5", n_done);
   gtk_label_set_text(GTK_LABEL(label), nm);
 }
 
@@ -224,7 +224,16 @@ char* quote_string(char* in) {
   return g_strconcat("\"", g_regex_replace(quote_re, in, -1, 0, "\"\"", 0, NULL), "\"", NULL);
 }
 
-// Save callbacks
+// Save file callbacks
+char label_to_abbrev(char* s) {
+  if (g_str_equal(s, "Done")) {
+    return 'D';
+  } if (g_str_equal(s, "Pending")) {
+    return 'P';
+  }
+  return 'O';
+}
+
 void save_cb(GObject* fd, GAsyncResult* res, gpointer listmodel) {
   GFile* file = gtk_file_dialog_save_finish(GTK_FILE_DIALOG(fd), res, NULL);
   if (!file) {
@@ -236,7 +245,7 @@ void save_cb(GObject* fd, GAsyncResult* res, gpointer listmodel) {
   for (int n = 0; (item = g_list_model_get_item(lm, n)) != NULL; ++n) {
     char line[6] = {0};
     for (int i = 0; i < 5; ++i) {
-      line[i] = item->status[i][0];
+      line[i] = label_to_abbrev(item->status[i]);
     }
     text = g_strconcat(text, line, ",", quote_string(item->desc),
                                    ",", quote_string(item->lupdate), "\n", NULL);
@@ -251,13 +260,13 @@ void save_button_cb(GtkButton* btn, TuasWindow* win) {
   gtk_file_dialog_save(fd, GTK_WINDOW(win), NULL, save_cb, win->liststore);
 }
 
-// Open callbacks
+// Open file callbacks
 char* abbrev_to_label(char s) {
   switch (s) {
-    case 'C': return "Closed"; break;
-    case 'N': return "N/A"; break;
+    case 'D': return "Done"; break;
+    case 'P': return "Pending"; break;
     case 'O':
-     default: return "Open"; break;
+     default: return "—"; break;
   }
 }
 
@@ -336,7 +345,7 @@ void delete_all_button_cb(GtkButton* btn, TuasWindow* win) {
 
 // Begin tedious boilerplate
 
-char* colnames[] = {"User reqs", "Design", "Testing", "AFM", "Report"};
+char* colnames[] = {"FAI", "Check doc", "Report", "Approval", "Print & sign"};
 
 void tuas_window_init(TuasWindow* win) {
   gtk_widget_init_template(GTK_WIDGET(win));

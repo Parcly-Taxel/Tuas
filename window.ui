@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <template class="TuasWindow" parent="GtkApplicationWindow">
-    <property name="title">Tuas Jig Status Tracker</property>
+    <property name="title">Tuas Certification Progress Tracker</property>
     <property name="default-width">1400</property>
     <property name="default-height">500</property>
     <child type="titlebar">
@@ -9,7 +9,7 @@
         <child>
           <object class="GtkButton">
             <property name="icon-name">list-add-symbolic</property>
-            <property name="tooltip-text">New jig</property>
+            <property name="tooltip-text">New task</property>
             <signal name="clicked" handler="new_row_cb" swapped="false" object="TuasWindow"/>
           </object>
         </child>
@@ -40,7 +40,7 @@
         <child type="end">
           <object class="GtkButton">
             <property name="icon-name">list-remove-symbolic</property>
-            <property name="tooltip-text">Clear completed jigs</property>
+            <property name="tooltip-text">Clear completed tasks</property>
             <signal name="clicked" handler="delete_button_cb" swapped="false" object="TuasWindow"/>
           </object>
         </child>
@@ -64,8 +64,8 @@
             </property>
             <child>
               <object class="GtkColumnViewColumn">
-                <property name="title">Description</property>
-                <property name="fixed-width">700</property>
+                <property name="title">Component</property>
+                <property name="fixed-width">500</property>
                 <property name="resizable">true</property>
                 <property name="factory">
                   <object class="GtkSignalListItemFactory">
