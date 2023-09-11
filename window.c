@@ -17,12 +17,13 @@ G_DEFINE_TYPE(TuasWindow, tuas_window, GTK_TYPE_APPLICATION_WINDOW)
 
 enum {
   PROP_DESC = 1,
-  PROP_STATUS0 = 2,
-  PROP_STATUS1 = 3,
-  PROP_STATUS2 = 4,
-  PROP_STATUS3 = 5,
-  PROP_STATUS4 = 6,
-  PROP_LUPDATE = 7,
+  PROP_PIC = 2,
+  PROP_STATUS0 = 3,
+  PROP_STATUS1 = 4,
+  PROP_STATUS2 = 5,
+  PROP_STATUS3 = 6,
+  PROP_STATUS4 = 7,
+  PROP_LUPDATE = 8,
   N_PROPERTIES
 };
 static GParamSpec *jig_data_properties[N_PROPERTIES] = {NULL};
@@ -33,6 +34,7 @@ typedef struct _JigData {
   GObject parent;
   GtkListItem* item;
   char* desc;
+  char* pic;
   char* status[5];
   char* lupdate;
 } JigData;
@@ -41,6 +43,7 @@ G_DEFINE_TYPE(JigData, jig_data, G_TYPE_OBJECT)
 static void jig_data_init(JigData* self) {
   self->item = NULL;
   self->desc = NULL;
+  self->pic = NULL;
   for (int i = 0; i < 5; ++i) {
     self->status[i] = NULL;
   }
@@ -51,6 +54,8 @@ static void jig_data_set_property(GObject* object, guint property_id, const GVal
   JigData* self = JIG_DATA(object);
   if (property_id == PROP_DESC) {
     self->desc = g_strdup(g_value_get_string(value));
+  } else if (property_id == PROP_PIC) {
+    self->pic = g_strdup(g_value_get_string(value));
   } else if (PROP_STATUS0 <= property_id && property_id <= PROP_STATUS4) {
     self->status[property_id - PROP_STATUS0] = g_strdup(g_value_get_string(value));
   } else if (property_id == PROP_LUPDATE) {
@@ -64,6 +69,8 @@ static void jig_data_get_property(GObject* object, guint property_id, GValue* va
   JigData* self = JIG_DATA(object);
   if (property_id == PROP_DESC) {
     g_value_set_string(value, g_strdup(self->desc));
+  } else if (property_id == PROP_PIC) {
+    g_value_set_string(value, g_strdup(self->pic));
   } else if (PROP_STATUS0 <= property_id && property_id <= PROP_STATUS4) {
     g_value_set_string(value, g_strdup(self->status[property_id - PROP_STATUS0]));
   } else if (property_id == PROP_LUPDATE) {
@@ -78,6 +85,9 @@ static void jig_data_finalize(GObject* object) {
   if (self->desc) {
     g_free(self->desc);
   }
+  if (self->pic) {
+    g_free(self->pic);
+  }
   if (self->lupdate) {
     g_free(self->lupdate);
   }
@@ -90,6 +100,7 @@ static void jig_data_class_init(JigDataClass* class) {
   gobject_class->set_property = jig_data_set_property;
   gobject_class->get_property = jig_data_get_property;
   jig_data_properties[PROP_DESC] = g_param_spec_string("desc", "string", "string", "", G_PARAM_READWRITE);
+  jig_data_properties[PROP_PIC] = g_param_spec_string("pic", "string", "string", "", G_PARAM_READWRITE);
   char nm[8];
   for (int i = 0; i < 5; ++i) {
     g_snprintf(nm, 8, "status%d", i);
@@ -99,12 +110,13 @@ static void jig_data_class_init(JigDataClass* class) {
   g_object_class_install_properties(gobject_class, N_PROPERTIES, jig_data_properties);
 }
 
-JigData* jig_data_new_with_data(GtkListItem* item, char* desc,
+JigData* jig_data_new_with_data(GtkListItem* item, char* desc, char* pic,
     char* status0, char* status1, char* status2, char* status3, char* status4, char* lupdate) {
   g_return_val_if_fail(GTK_IS_LIST_ITEM(item) || item == NULL, NULL);
   JigData *data = JIG_DATA(g_object_new(JIG_TYPE_DATA, NULL));
   data->item = item ? g_object_ref(item) : NULL;
   data->desc = g_strdup(desc);
+  data->pic = g_strdup(pic);
   data->status[0] = g_strdup(status0);
   data->status[1] = g_strdup(status1);
   data->status[2] = g_strdup(status2);
@@ -118,12 +130,12 @@ JigData* jig_data_new_with_data(GtkListItem* item, char* desc,
 
 // Row addition callback
 void new_row_cb(GtkButton* btn, TuasWindow* win) {
-  JigData* data = jig_data_new_with_data(NULL, "", "—", "—", "—", "—", "—", "");
+  JigData* data = jig_data_new_with_data(NULL, "", "", "—", "—", "—", "—", "—", "");
   g_list_store_append(win->liststore, data);
   g_object_unref(data);
 }
 
-// Description callbacks
+// Description of component callbacks
 void setup_desc_cb(GtkListItemFactory* self, GtkListItem* item) {
   GtkWidget* text = gtk_entry_new();
   gtk_list_item_set_child(item, text);
@@ -132,7 +144,6 @@ void setup_desc_cb(GtkListItemFactory* self, GtkListItem* item) {
 void bind_desc_cb(GtkListItemFactory* self, GtkListItem* item) {
   GtkEntry* entry = GTK_ENTRY(gtk_list_item_get_child(item));
   GtkEntryBuffer* buffer = gtk_entry_get_buffer(entry);
-  // gtk_entry_set_placeholder_text(entry, "Jig description");
   JigData* data = JIG_DATA(gtk_list_item_get_item(item));
   gtk_editable_set_text(GTK_EDITABLE(entry), data->desc);
   GBinding* bind = g_object_bind_property(buffer, "text", data, "desc", G_BINDING_DEFAULT);
@@ -143,6 +154,16 @@ void unbind_desc_cb(GtkListItemFactory* self, GtkListItem* item) {
   GBinding* bind = G_BINDING(g_object_get_data(G_OBJECT(item), "bind"));
   g_binding_unbind(bind);
   g_object_set_data(G_OBJECT(item), "bind", NULL);
+}
+
+// PIC callbacks (setup and unbind callbacks are shared with desc)
+void bind_pic_cb(GtkListItemFactory* self, GtkListItem* item) {
+  GtkEntry* entry = GTK_ENTRY(gtk_list_item_get_child(item));
+  GtkEntryBuffer* buffer = gtk_entry_get_buffer(entry);
+  JigData* data = JIG_DATA(gtk_list_item_get_item(item));
+  gtk_editable_set_text(GTK_EDITABLE(entry), data->pic);
+  GBinding* bind = g_object_bind_property(buffer, "text", data, "pic", G_BINDING_DEFAULT);
+  g_object_set_data(G_OBJECT(item), "bind", bind);
 }
 
 // Parameter button callbacks
@@ -248,6 +269,7 @@ void save_cb(GObject* fd, GAsyncResult* res, gpointer listmodel) {
       line[i] = label_to_abbrev(item->status[i]);
     }
     text = g_strconcat(text, line, ",", quote_string(item->desc),
+                                   ",", quote_string(item->pic),
                                    ",", quote_string(item->lupdate), "\n", NULL);
   }
   g_file_replace_contents(file, text, strlen(text), NULL, false, G_FILE_CREATE_NONE, NULL, NULL, NULL);
@@ -271,11 +293,12 @@ char* abbrev_to_label(char s) {
 }
 
 // ! More string processing!
-
 JigData* jig_data_new_from_line(char* ln) {
   char* desc;
-  char* comma; // index of the second comma separator
+  char* pic;
   char* lupdate;
+  char* comma; // index of second comma separator
+  char* comma2; // index of third comma separator
   GRegex* dquote_re = g_regex_new("\"\"", 0, 0, NULL);
   if (ln[6] != '\"') { // description is not quoted
     comma = g_strstr_len(ln + 6, -1, ",");
@@ -284,13 +307,20 @@ JigData* jig_data_new_from_line(char* ln) {
     comma = g_strstr_len(ln + 7, -1, "\",");
     desc = g_regex_replace(dquote_re, g_strndup(ln + 7, comma++ - (ln + 7)), -1, 0, "\"", 0, NULL);
   }
-  if (strlen(comma) > 1 && comma[1] == '"') {
-    lupdate = g_regex_replace(dquote_re, comma + 2, -1, 0, "\"", 0, NULL);
+  if (comma[1] != '\"') { // PIC is not quoted
+    comma2 = g_strstr_len(comma + 1, -1, ",");
+    pic = g_strndup(comma + 1, comma2 - (comma + 1));
+  } else {
+    comma2 = g_strstr_len(comma + 2, -1, "\",");
+    pic = g_regex_replace(dquote_re, g_strndup(comma + 2, comma2++ - (comma + 2)), -1, 0, "\"", 0, NULL);
+  }
+  if (strlen(comma2) > 1 && comma2[1] == '"') {
+    lupdate = g_regex_replace(dquote_re, comma2 + 2, -1, 0, "\"", 0, NULL);
     lupdate = g_strndup(lupdate, strlen(lupdate) - 1);
   } else {
-    lupdate = comma + 1;
+    lupdate = comma2 + 1;
   }
-  JigData* res = jig_data_new_with_data(NULL, desc,
+  JigData* res = jig_data_new_with_data(NULL, desc, pic,
     abbrev_to_label(ln[0]), abbrev_to_label(ln[1]), abbrev_to_label(ln[2]),
     abbrev_to_label(ln[3]), abbrev_to_label(ln[4]), lupdate);
   return res;
@@ -355,7 +385,7 @@ void tuas_window_init(TuasWindow* win) {
     g_signal_connect(factory, "bind", G_CALLBACK(bind_status_cb), GINT_TO_POINTER(i));
     g_signal_connect(factory, "unbind", G_CALLBACK(unbind_status_cb), NULL);
     GtkColumnViewColumn* column = gtk_column_view_column_new(g_strdup(colnames[i]), factory);
-    gtk_column_view_insert_column(win->columnview, i + 1, column);
+    gtk_column_view_insert_column(win->columnview, i + 2, column);
   }
   GtkListItemFactory* factory = gtk_signal_list_item_factory_new();
   g_signal_connect(factory, "setup", G_CALLBACK(setup_progress_cb), NULL);
@@ -372,6 +402,7 @@ void tuas_window_class_init(TuasWindowClass* class) {
   gtk_widget_class_bind_template_callback(wc, setup_desc_cb);
   gtk_widget_class_bind_template_callback(wc, bind_desc_cb);
   gtk_widget_class_bind_template_callback(wc, unbind_desc_cb);
+  gtk_widget_class_bind_template_callback(wc, bind_pic_cb);
   gtk_widget_class_bind_template_callback(wc, bind_lupdate_cb);
   gtk_widget_class_bind_template_callback(wc, new_row_cb);
   gtk_widget_class_bind_template_callback(wc, open_button_cb);
